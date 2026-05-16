@@ -1,0 +1,110 @@
+    /// 中央パネル: マップビューポート。
+    fn draw_map_viewport(&mut self, ui: &mut egui::Ui) {
+        let available_rect = ui.available_rect_before_wrap();
+
+        // 入力処理: パン＆ズーム
+        let response = ui.allocate_rect(available_rect, egui::Sense::click_and_drag());
+
+        if response.dragged_by(egui::PointerButton::Middle)
+            || (response.dragged_by(egui::PointerButton::Primary)
+                && ui.input(|i| i.modifiers.shift))
+        {
+            let delta = response.drag_delta();
+            self.viewport.offset += delta / self.viewport.zoom;
+        }
+
+        // ズーム (マウスホイール)
+        let scroll_delta = ui.input(|i| i.smooth_scroll_delta.y);
+        if scroll_delta != 0.0 {
+            if scroll_delta > 0.0 {
+                self.viewport.zoom_in();
+            } else {
+                self.viewport.zoom_out();
+            }
+        }
+
+        let zoom = self.viewport.zoom;
+        let offset = self.viewport.offset;
+
+        // マップ描画
+        if let Some(texture) = self.map_texture.clone() {
+            let tex_size = texture.size_vec2();
+            let scaled_size = tex_size * zoom;
+
+            let center = available_rect.center();
+            let scaled_offset = offset * zoom;
+            let top_left = egui::Pos2::new(
+                center.x + scaled_offset.x - scaled_size.x / 2.0,
+                center.y + scaled_offset.y - scaled_size.y / 2.0,
+            );
+
+            let image_rect = egui::Rect::from_min_size(top_left, scaled_size);
+
+            // テクスチャを描画
+            let painter = ui.painter_at(available_rect);
+            painter.image(
+                texture.id(),
+                image_rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+
+            // テクスチャの更新 (もしあれば)
+            if let Some(project) = &mut self.project {
+                if project.dirty_rect.is_some() {
+                    let color_image = crate::map_loader::pixels_to_color_image(&project.pixels, project.width, project.height);
+                    texture.set(color_image, egui::TextureOptions::NEAREST);
+                    project.dirty_rect = None;
+                }
+            }
+
+            // マウスホバー時のインスペクター更新
+            if let Some(hover_pos) = response.hover_pos() {
+                let map_pos = egui::Pos2::new(
+                    (hover_pos.x - top_left.x) / zoom,
+                    (hover_pos.y - top_left.y) / zoom,
+                );
+                self.update_inspector(map_pos);
+            }
+
+            // クリック/ドラッグ時のツール実行
+            if response.dragged_by(egui::PointerButton::Primary) || response.clicked() {
+                if let Some(click_pos) = response.interact_pointer_pos() {
+                    let map_pos = egui::Pos2::new(
+                        (click_pos.x - top_left.x) / zoom,
+                        (click_pos.y - top_left.y) / zoom,
+                    );
+                    self.handle_tool_action(map_pos, ui.ctx(), response.drag_started() || response.clicked());
+                }
+            } else if response.drag_released_by(egui::PointerButton::Primary) {
+                self.finalize_stroke();
+            }
+
+            // ブラシプレビュー表示
+            if self.active_tool == ActiveTool::Brush {
+                if let Some(hover_pos) = response.hover_pos() {
+                    let radius_screen = self.brush_size as f32 * zoom;
+                    painter.circle_stroke(
+                        hover_pos,
+                        radius_screen,
+                        egui::Stroke::new(1.0, egui::Color32::WHITE),
+                    );
+                }
+            }
+
+            // 選択中のプロヴィンスの外郭描画 (簡易版: 重心に印)
+            if let Some(selected) = &self.selected_province {
+                if let Some(project) = &self.project {
+                    if let Some(data) = project.graph.get_province(selected.id) {
+                        let centroid = data.centroid();
+                        let screen_pos = egui::Pos2::new(
+                            top_left.x + centroid.0 * zoom,
+                            top_left.y + centroid.1 * zoom,
+                        );
+                        painter.circle_filled(screen_pos, 4.0, egui::Color32::YELLOW);
+                    }
+                }
+            }
+        }
+    }
+}

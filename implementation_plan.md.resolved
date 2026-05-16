@@ -1,0 +1,80 @@
+# 実装計画 - フェーズ 1: マップローダー
+
+## ゴール説明
+HoI4専用マップ編集ツール「World Smith」を初期化し、基礎となる「マップローダー」機能を実装します。これには、Rustプロジェクト構造のセットアップ、高性能GUIライブラリ `eframe`/`egui` の統合、およびゲームエンジンに不可欠な「100%の色精度」で `provinces.bmp` を読み込み表示するロジックの実装が含まれます。
+
+## ユーザーレビューが必要な事項
+> [!IMPORTANT]
+> **技術スタックの選定**: 「高速なコア言語」「パフォーマンス重視」という要件に基づき、**Rust** と **WebGPU (wgpu)** (via **egui**) を採用し、最大のパフォーマンス（「ベクターファースト」）と厳密な型安全性を確保します。もしC++など他のスタックをご希望の場合はお知らせください。
+
+## 提案される変更
+
+### プロジェクト構造 (新規)
+`hoi4maptools` 内に新しいCargoワークスペースまたは単一クレートを初期化します。
+
+#### [NEW] [Cargo.toml](file:///C:/Users/sonnp/Desktop/hoi4maptools/Cargo.toml)
+- 依存関係の定義:
+    - `eframe` (0.24+): ネイティブGUIフレームワーク
+    - `egui`: 即時モードGUI (Immediate mode GUI)
+    - `image`: BMP読み込み用
+    - `serde`, `serde_json`, `csv`: データ解析用
+    - `rfd`: ネイティブファイルダイアログ
+    - `anyhow`: エラーハンドリング
+
+#### [NEW] [src/main.rs](file:///C:/Users/sonnp/Desktop/hoi4maptools/src/main.rs)
+- エントリーポイント。
+- `eframe` NativeOptions の初期化。
+
+#### [NEW] [src/app.rs](file:///C:/Users/sonnp/Desktop/hoi4maptools/src/app.rs)
+- `WorldSmithApp` 構造体。
+- メインUIループ (`update` 関数)。
+- 状態管理 (読み込まれた画像、ズームレベル、パンのオフセット)。
+
+#### [NEW] [src/core/mod.rs](file:///C:/Users/sonnp/Desktop/hoi4maptools/src/core/mod.rs)
+- コアモジュール定義。
+
+#### [NEW] [src/core/command.rs](file:///C:/Users/sonnp/Desktop/hoi4maptools/src/core/command.rs)
+- `pub trait Command`: `execute()`, `undo()` メソッドを持つ。
+- `pub struct CommandStack`: 実行済みコマンドの履歴を管理。履歴制限機能付き。
+
+#### [NEW] [src/core/fs.rs](file:///C:/Users/sonnp/Desktop/hoi4maptools/src/core/fs.rs) (VFS)
+- `ParadoxPathResolver`: ゲームディレクトリとModディレクトリを両方受け取り、ファイルの優先順位（Mod > DLC > Vanilla）を解決して読み込む。これが無いと将来的にMod開発で必ず詰む。
+
+#### [NEW] [src/map/graph.rs](file:///C:/Users/sonnp/Desktop/hoi4maptools/src/map/graph.rs)
+- `ProvinceGraph`: プロヴィンスの隣接リスト。
+- `QuadTree`: 座標(x,y)からプロヴィンスIDを一瞬で特定する空間インデックス。画像全体をスキャンしなくて済むようにする。
+
+#### [NEW] [src/map/mod.rs](file:///C:/Users/sonnp/Desktop/hoi4maptools/src/map/mod.rs)
+- `MapState`: 画像データだけでなく、論理データ(Definition)とグラフを保持する構造体。
+
+#### [NEW] [src/renderer/mod.rs](file:///C:/Users/sonnp/Desktop/hoi4maptools/src/renderer/mod.rs)
+- `MapRenderer`: `wgpu` または `egui::Painter` をラップ。
+- `DirtyRectTracker`: 変更された矩形領域を追跡し、テクスチャの一部だけを更新する。
+
+#### [NEW] [src/map_loader.rs](file:///C:/Users/sonnp/Desktop/hoi4maptools/src/map_loader.rs)
+- `load_provinces_bmp(...)`: 画像を読み込むと同時に、初期グラフ構築とQuadTree生成を行う（非同期推奨）。
+
+### UI レイアウト
+- **左パネル**: ツール群 (Painter, Sculptor, Logic, Balancer タブ)。
+- **中央パネル**: マップビューポート。
+- **右パネル**: プロヴィンス詳細 (ID, タイプ等) & レイヤー。
+
+## 検証計画
+
+### 自動テスト
+- **BMP読み込みの単体テスト**: 既知のRGB値を持つダミーBMPを作成します。`src/map_loader.rs` にテストを記述し、読み込み後のピクセル値が期待通りであり、圧縮ノイズがないことを確認します。
+    ```bash
+    cargo test
+    ```
+
+### 手動検証
+- **アプリの実行**:
+    ```bash
+    cargo run --release
+    ```
+- **マップ読み込み**:
+    1. 「Open Map」 (またはファイルメニュー) をクリック。
+    2. 有効な `provinces.bmp` を選択。
+    3. マップが描画されることを確認。
+    4. ズームイン/アウト、パン操作を行いパフォーマンスを確認。
+    5. 色が正しく表示されているか (目視確認) をチェック。

@@ -1,0 +1,5 @@
+i18n.rs: format! macro with non-literal string argument (fix attempted via literal)
+i18n.rs: LanguageIdentifier type mismatch in negotiate_languages (fix attempted via direct cast)
+i18n.rs: FluentBundle constructor type inference (fix attempted via explicit annotations)
+i18n.rs: unic-langid dependency version mismatch (fix attempted via Cargo.toml edit)
+i18n.rs: FluentBundle type mismatch with intl_memoizer (abandoned complex fix, switching to simple mock for now)

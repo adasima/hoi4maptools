@@ -1,0 +1,32 @@
+# World Smith ウォークスルー - フェーズ 0 & 1 完了
+
+## 実装された機能
+
+### フェーズ 0: アーキテクチャ基盤 ✅
+| モジュール | ファイル | 機能 |
+|---|---|---|
+| Undo/Redo | [command.rs](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/core/command.rs) | [Command](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/core/command.rs#8-16)トレイト + [CommandStack](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/core/command.rs#31-39)（メモリ制限付き履歴管理） |
+| VFS | [fs.rs](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/core/fs.rs) | Mod > DLC > Vanilla 優先順位によるファイル解決 |
+| グラフ構造 | [graph.rs](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/map/graph.rs) | 隣接グラフ + R*木空間インデックス + RGB→IDルックアップ |
+| CSV解析 | [definition.rs](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/map/definition.rs) | `definition.csv` 読み書き + 未使用色自動割り当て |
+| レンダラー | [renderer/mod.rs](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/renderer/mod.rs) | DirtyRectTracker + レイヤー管理 + パン/ズーム座標変換 |
+
+### フェーズ 1: マップローダー & GUIアプリ ✅
+| モジュール | ファイル | 機能 |
+|---|---|---|
+| BMP読み書き | [map_loader.rs](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/map_loader.rs) | ロスレスBMP入出力 + デバッグエクスポート |
+| GUIアプリ | [app.rs](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/app.rs) | 3パネルUI、マップ表示、ホバーインスペクター、Ctrl+Z/Y、RNGシード管理、i18n対応メニュー |
+| RNGサービス | [rng.rs](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/core/rng.rs) | 決定論的乱数生成 (`Xoshiro256PlusPlus`) とシード管理API |
+| i18n基盤 | [i18n.rs](file:///c:/Users/sonnp/Desktop/hoi4maptools/src/core/i18n.rs) / [assets/i18n](file:///c:/Users/sonnp/Desktop/hoi4maptools/assets/i18n) | Fluentベースの多言語対応（メニュー/設定ラベル） |
+
+## テスト結果
+```
+test result: ok. 12 passed; 0 failed
+```
+
+## 起動手順
+VSCode タスク `World Smith: Run (Debug)` または `World Smith: Run (Release)` を実行してください。
+
+## 次に着手すべきフェーズ
+- ステップ2: インテリジェント・スポイト & 塗りつぶし
+- ステップ3: データ・エクスポーター
