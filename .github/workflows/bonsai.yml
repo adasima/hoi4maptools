@@ -6,8 +6,8 @@ on:
 
 jobs:
   auto-merge:
-    # Jules[bot] が作ったPRのときだけ起動する
-    if: github.actor == 'google-labs-jules[bot]'
+    # PRの本文に「Julesが自動作成した」という一文が含まれている時だけ起動！
+    if: contains(github.event.pull_request.body, 'PR created automatically by Jules')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
