@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use fluent::{FluentBundle, FluentResource};
+use fluent::FluentResource;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
