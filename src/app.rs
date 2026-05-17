@@ -32,13 +32,10 @@ enum ActiveTool {
     Fill,
     Brush,
     NewProvince,
+    BoxSelect,
 }
 
-/// 明示的に選択されたプロヴィンス。
-struct SelectedProvince {
-    id: ProvinceId,
-    color: ProvinceColor,
-}
+
 
 /// メインアプリケーション構造体。
 pub struct WorldSmithApp {
@@ -68,8 +65,12 @@ pub struct WorldSmithApp {
     brush_size: u32,
     /// 現在のドラッグ中のストローク
     current_stroke: Option<crate::map::command::PaintStrokeCommand>,
-    /// 明示的に選択されたプロヴィンス
-    selected_province: Option<SelectedProvince>,
+    /// 明示的に選択されたプロヴィンス群
+    selected_provinces: std::collections::HashSet<ProvinceId>,
+    /// ドラッグ選択の矩形
+    selection_rect: Option<egui::Rect>,
+    /// 現在描画・塗りつぶしに使う色
+    current_brush_color: Option<ProvinceColor>,
     /// Painter: ボロノイポイント
     painter_points: Vec<PainterPoint>,
     /// Painter: グリッド/ポイントモード
@@ -104,7 +105,9 @@ impl WorldSmithApp {
             active_tool: ActiveTool::Inspect,
             brush_size: 1,
             current_stroke: None,
-            selected_province: None,
+            selected_provinces: std::collections::HashSet::new(),
+            selection_rect: None,
+            current_brush_color: None,
             painter_points: Vec::new(),
             grid_mode: GridMode::None,
             hex_config: HexGridConfig::default(),
@@ -519,12 +522,12 @@ impl WorldSmithApp {
             ActiveTool::Brush => {
                 if is_new_stroke {
                     self.current_stroke = Some(crate::map::command::PaintStrokeCommand {
-                        color: self.selected_province.as_ref().map(|s| s.color).unwrap_or(ProvinceColor::new(255, 255, 255)),
+                        color: self.current_brush_color.unwrap_or(ProvinceColor::new(255, 255, 255)),
                         history: Vec::new(),
                     });
                 }
 
-                if let (Some(stroke), Some(selected)) = (&mut self.current_stroke, &self.selected_province) {
+                if let (Some(stroke), Some(brush_color)) = (&mut self.current_stroke, &self.current_brush_color) {
                     let radius = self.brush_size as f32;
                     let r2 = radius * radius;
                     let width = project.width;
@@ -536,7 +539,7 @@ impl WorldSmithApp {
                     let max_y = (map_pos.y + radius).min(height as f32 - 1.0) as u32;
 
                     let mut changed = false;
-                    let new_id = project.graph.id_from_color(&selected.color);
+                    let new_id = project.graph.id_from_color(&*brush_color);
 
                     for py in min_y..=max_y {
                         for px in min_x..=max_x {
@@ -550,11 +553,11 @@ impl WorldSmithApp {
                                     project.pixels[idx+2]
                                 );
 
-                                if old_color != selected.color {
+                                if old_color != *brush_color {
                                     stroke.history.push((px, py, old_color));
-                                    project.pixels[idx] = selected.color.r;
-                                    project.pixels[idx+1] = selected.color.g;
-                                    project.pixels[idx+2] = selected.color.b;
+                                    project.pixels[idx] = brush_color.r;
+                                    project.pixels[idx+1] = brush_color.g;
+                                    project.pixels[idx+2] = brush_color.b;
                                     
                                     let old_id = project.graph.id_from_color(&old_color);
                                     project.graph.update_pixel(px, py, old_id, new_id);
@@ -588,18 +591,18 @@ impl WorldSmithApp {
 
         match self.active_tool {
             ActiveTool::Inspect => {
-                self.selected_province = Some(SelectedProvince { id, color });
+                self.current_brush_color = Some(color);
                 self.status_message = format!("選択中プロヴィンス: ID {} ({}, {}, {})", id, color.r, color.g, color.b);
             }
             ActiveTool::Eyedropper => {
-                self.selected_province = Some(SelectedProvince { id, color });
+                self.current_brush_color = Some(color);
                 self.status_message = format!("スポイト: ID {} ({}, {}, {}) を選択しました", id, color.r, color.g, color.b);
             }
             ActiveTool::Fill => {
-                if let Some(selected) = &self.selected_province {
+                if let Some(brush_color) = &self.current_brush_color {
                     let cmd = Box::new(crate::map::command::FillCommand {
                         from_color: color,
-                        to_color: selected.color,
+                        to_color: *brush_color,
                     });
                     if let Some(project) = &mut self.project {
                         let _ = self.command_stack.execute(cmd, project);
@@ -612,6 +615,7 @@ impl WorldSmithApp {
                 self.create_new_province_at(map_pos, ctx);
             }
             ActiveTool::Brush => {} // Brush は別ロジック
+            ActiveTool::BoxSelect => {}
         }
 
         // Painter のポイントモード処理（ツールに関係なく動作）
@@ -704,6 +708,7 @@ impl WorldSmithApp {
             ui.selectable_value(&mut self.active_tool, ActiveTool::Eyedropper, "🎯 Eyedropper");
             ui.selectable_value(&mut self.active_tool, ActiveTool::Brush, "🖌 Brush");
             ui.selectable_value(&mut self.active_tool, ActiveTool::Fill, "🪣 Fill");
+            ui.selectable_value(&mut self.active_tool, ActiveTool::BoxSelect, "🔲 Select");
         });
         
         if self.active_tool == ActiveTool::Brush {
@@ -756,7 +761,12 @@ impl WorldSmithApp {
                 .text("Hexセルサイズ"),
         );
         ui.add_enabled(false, egui::Button::new("ボロノイ・ブラシ"));
-        ui.add_enabled(false, egui::Button::new("ヘックス・グリッド"));
+                if ui.button("マップ全体をHexで再生成").clicked() {
+            let cmd = Box::new(crate::map::command::GenerateHexMapCommand::new(self.hex_config.clone()));
+            if let Some(project) = &mut self.project {
+                let _ = self.command_stack.execute(cmd, project);
+            }
+        }
         ui.add_enabled(false, egui::Button::new("シンメトリーモード"));
         ui.separator();
 
@@ -829,6 +839,48 @@ impl WorldSmithApp {
         ui.heading("📑 レイヤー");
         // 後のフェーズでレイヤー管理UIを追加
         ui.label("(今後実装)");
+        ui.separator();
+        ui.heading("📦 一括編集");
+        let selected_count = self.selected_provinces.len();
+        if selected_count > 0 {
+            ui.label(format!("{} 個のプロヴィンスを選択中", selected_count));
+
+            // 簡易的な一括編集用ステート。
+            // 実際は app.rs に持たせるのがベストですが、UIデモとして
+            // 一時的な変更ならボタンクリック時のハードコードでも動作確認可能です。
+            // 今回は一括で地形を 'plains' に変えるボタン等を用意します。
+
+            ui.horizontal(|ui| {
+                if ui.button("地形を 'plains' に統一").clicked() {
+                    let cmd = Box::new(crate::map::command::EditProvincesCommand {
+                        province_ids: self.selected_provinces.clone(),
+                        new_terrain: Some("plains".to_string()),
+                        new_province_type: None,
+                        new_continent: None,
+                        history: std::collections::HashMap::new(),
+                    });
+                    if let Some(project) = &mut self.project {
+                        let _ = self.command_stack.execute(cmd, project);
+                    }
+                }
+
+                if ui.button("地形を 'mountain' に統一").clicked() {
+                    let cmd = Box::new(crate::map::command::EditProvincesCommand {
+                        province_ids: self.selected_provinces.clone(),
+                        new_terrain: Some("mountain".to_string()),
+                        new_province_type: None,
+                        new_continent: None,
+                        history: std::collections::HashMap::new(),
+                    });
+                    if let Some(project) = &mut self.project {
+                        let _ = self.command_stack.execute(cmd, project);
+                    }
+                }
+            });
+
+        } else {
+            ui.label("プロヴィンスが選択されていません。\n(Select ツールでドラッグ)");
+        }
     }
 
     /// 中央パネル: マップビューポート。
@@ -910,7 +962,7 @@ impl WorldSmithApp {
                     );
                     self.handle_tool_action(map_pos, ui.ctx(), response.drag_started() || response.clicked());
                 }
-            } else if response.drag_released_by(egui::PointerButton::Primary) {
+            } else if response.drag_stopped_by(egui::PointerButton::Primary) {
                 self.finalize_stroke();
             }
 
@@ -927,9 +979,9 @@ impl WorldSmithApp {
             }
 
             // 選択中のプロヴィンス表示 (重心)
-            if let Some(selected) = &self.selected_province {
-                if let Some(project) = &self.project {
-                    if let Some(data) = project.graph.get_province(selected.id) {
+            if let Some(project) = &self.project {
+                for &sel_id in &self.selected_provinces {
+                    if let Some(data) = project.graph.get_province(sel_id) {
                         let centroid = data.centroid();
                         let screen_pos = egui::Pos2::new(
                             top_left.x + centroid.0 * zoom,
