@@ -28,7 +28,12 @@ impl DirtyRectTracker {
     pub fn mark_dirty(&mut self, x: u32, y: u32, width: u32, height: u32) {
         match &mut self.current {
             None => {
-                self.current = Some(DirtyRect { x, y, width, height });
+                self.current = Some(DirtyRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                });
             }
             Some(rect) => {
                 // 既存のrectとマージ (バウンディングボックスの結合)

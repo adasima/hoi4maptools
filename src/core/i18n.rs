@@ -23,13 +23,17 @@ impl I18n {
                         let source = fs::read_to_string(&path)?;
                         let res = FluentResource::try_new(source)
                             .map_err(|(_res, _errs)| anyhow!("failed to parse FTL"))?;
-                        
-                        let langid: LanguageIdentifier = file_stem.parse().map_err(|_| anyhow!("invalid locale name: {}", file_stem))?;
-                        
+
+                        let langid: LanguageIdentifier = file_stem
+                            .parse()
+                            .map_err(|_| anyhow!("invalid locale name: {}", file_stem))?;
+
                         let mut bundle: fluent::concurrent::FluentBundle<FluentResource> =
                             fluent::concurrent::FluentBundle::new_concurrent(vec![langid]);
-                            
-                        bundle.add_resource(res).map_err(|_e| anyhow!("failed to add FTL resource for {file_stem}"))?;
+
+                        bundle
+                            .add_resource(res)
+                            .map_err(|_e| anyhow!("failed to add FTL resource for {file_stem}"))?;
                         bundles.insert(file_stem.to_string(), bundle);
                     }
                 }
@@ -53,7 +57,9 @@ impl I18n {
     }
 
     pub fn tr(&self, key: &str) -> String {
-        let Some(bundle): Option<&fluent::concurrent::FluentBundle<FluentResource>> = self.bundles.get(&self.current_locale) else {
+        let Some(bundle): Option<&fluent::concurrent::FluentBundle<FluentResource>> =
+            self.bundles.get(&self.current_locale)
+        else {
             return key.to_string();
         };
         let msg = match bundle.get_message(key) {

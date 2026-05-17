@@ -49,4 +49,3 @@ mod tests {
         assert_eq!(seq1, seq2);
     }
 }
-

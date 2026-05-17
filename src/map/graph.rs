@@ -1,7 +1,6 @@
 /// プロヴィンスのグラフ構造と空間インデックス。
 /// 隣接情報の管理と、座標からプロヴィンスIDへの高速ルックアップを提供する。
-
-use rstar::{RTree, RTreeObject, PointDistance, AABB};
+use rstar::{PointDistance, RTree, RTreeObject, AABB};
 use std::collections::{HashMap, HashSet};
 
 /// プロヴィンスID (HoI4 の definition.csv における ID)
@@ -316,10 +315,7 @@ mod tests {
     #[test]
     fn test_build_simple_graph() {
         // 2x2 の画像: 左半分は赤(ID=1)、右半分は青(ID=2)
-        let pixels: Vec<u8> = vec![
-            255, 0, 0,   0, 0, 255,
-            255, 0, 0,   0, 0, 255,
-        ];
+        let pixels: Vec<u8> = vec![255, 0, 0, 0, 0, 255, 255, 0, 0, 0, 0, 255];
         let mut color_id_map = HashMap::new();
         let red_key = (255u32) << 16;
         let blue_key = 255u32;

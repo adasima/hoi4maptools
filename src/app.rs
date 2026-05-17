@@ -1,6 +1,5 @@
 /// メインアプリケーション。
 /// WorldSmithApp は eframe::App を実装し、UIループを駆動する。
-
 use eframe::egui;
 use std::path::PathBuf;
 
@@ -10,9 +9,11 @@ use crate::core::i18n::I18n;
 use crate::core::rng::WorldRng;
 use crate::map::definition::DefinitionTable;
 use crate::map::graph::{ProvinceColor, ProvinceGraph, ProvinceId};
-use crate::renderer::MapViewport;
-use crate::painter::{HexGridConfig, GridMode, PainterPoint, hex_cell_to_polygon, map_pos_to_hex_cell};
 use crate::map::ProjectState;
+use crate::painter::{
+    hex_cell_to_polygon, map_pos_to_hex_cell, GridMode, HexGridConfig, PainterPoint,
+};
+use crate::renderer::MapViewport;
 
 /// ホバー/クリックで表示するプロヴィンスの情報
 struct InspectorInfo {
@@ -34,8 +35,6 @@ enum ActiveTool {
     NewProvince,
     BoxSelect,
 }
-
-
 
 /// メインアプリケーション構造体。
 pub struct WorldSmithApp {
@@ -98,7 +97,8 @@ impl WorldSmithApp {
             map_texture: None,
             project: None,
             inspector: None,
-            status_message: "World Smith へようこそ。ファイル → マップを開く で開始してください。".to_string(),
+            status_message: "World Smith へようこそ。ファイル → マップを開く で開始してください。"
+                .to_string(),
             rng: WorldRng::new(default_seed),
             rng_seed_input: default_seed.to_string(),
             i18n,
@@ -179,10 +179,7 @@ impl WorldSmithApp {
         let color_id_map = definitions.color_id_map().clone();
         let graph = ProvinceGraph::build_from_pixels(&pixels, width, height, &color_id_map);
 
-        log::info!(
-            "グラフ構築完了: {} プロヴィンス",
-            graph.province_count()
-        );
+        log::info!("グラフ構築完了: {} プロヴィンス", graph.province_count());
 
         // テクスチャを作成
         let color_image = crate::map_loader::pixels_to_color_image(&pixels, width, height);
@@ -277,7 +274,9 @@ impl WorldSmithApp {
 
     /// マップ座標からプロヴィンスIDと色を取得する。
     fn pick_province_at(&self, map_pos: egui::Pos2) -> Option<(ProvinceId, ProvinceColor)> {
-        let Some(project) = &self.project else { return None };
+        let Some(project) = &self.project else {
+            return None;
+        };
         let x = map_pos.x as i32;
         let y = map_pos.y as i32;
 
@@ -321,11 +320,7 @@ impl WorldSmithApp {
                 .get_province(id)
                 .map(|p| p.pixel_count)
                 .unwrap_or(0);
-            let neighbor_count = project
-                .graph
-                .neighbors(id)
-                .map(|n| n.len())
-                .unwrap_or(0);
+            let neighbor_count = project.graph.neighbors(id).map(|n| n.len()).unwrap_or(0);
 
             self.inspector = Some(InspectorInfo {
                 id,
@@ -386,11 +381,7 @@ impl WorldSmithApp {
 
         // テクスチャを更新。
         let color_image = crate::map_loader::pixels_to_color_image(&project.pixels, width, height);
-        let texture = ctx.load_texture(
-            "provinces_map",
-            color_image,
-            egui::TextureOptions::NEAREST,
-        );
+        let texture = ctx.load_texture("provinces_map", color_image, egui::TextureOptions::NEAREST);
         self.map_texture = Some(texture);
         self.viewport.dirty_tracker.mark_all_dirty(width, height);
     }
@@ -433,12 +424,24 @@ impl WorldSmithApp {
         let existing_id = project.graph.id_from_color(&src_color);
         let (province_type, terrain, continent) = if let Some(id) = existing_id {
             if let Some(def) = project.definitions.get(id) {
-                (def.province_type.clone(), def.terrain.clone(), def.continent)
+                (
+                    def.province_type.clone(),
+                    def.terrain.clone(),
+                    def.continent,
+                )
             } else {
-                (crate::map::definition::ProvinceType::Land, "unknown".to_string(), 0)
+                (
+                    crate::map::definition::ProvinceType::Land,
+                    "unknown".to_string(),
+                    0,
+                )
             }
         } else {
-            (crate::map::definition::ProvinceType::Land, "unknown".to_string(), 0)
+            (
+                crate::map::definition::ProvinceType::Land,
+                "unknown".to_string(),
+                0,
+            )
         };
 
         // 未使用の RGB を割り当てて新規プロヴィンス定義を追加
@@ -447,7 +450,7 @@ impl WorldSmithApp {
             return;
         };
         // allocate_unused_color で确保した色を使用する。実際の ID 割り当てはコマンド内で行う。
-        
+
         // BFS による4近傍フラッドフィルで、この連結成分を取得する
         let width = project.width;
         let height = project.height;
@@ -464,10 +467,10 @@ impl WorldSmithApp {
             let r = project.pixels[idx];
             let g = project.pixels[idx + 1];
             let b = project.pixels[idx + 2];
-            
+
             if r == src_color.r && g == src_color.g && b == src_color.b {
                 affected_pixels.push((cx, cy));
-                
+
                 let neighbors = [
                     (cx.wrapping_sub(1), cy),
                     (cx + 1, cy),
@@ -515,19 +518,30 @@ impl WorldSmithApp {
     }
 
     /// ツール実行用のメイン処理。
-    fn handle_tool_action(&mut self, map_pos: egui::Pos2, ctx: &egui::Context, is_new_stroke: bool) {
-        let Some(project) = &mut self.project else { return };
-        
+    fn handle_tool_action(
+        &mut self,
+        map_pos: egui::Pos2,
+        ctx: &egui::Context,
+        is_new_stroke: bool,
+    ) {
+        let Some(project) = &mut self.project else {
+            return;
+        };
+
         match self.active_tool {
             ActiveTool::Brush => {
                 if is_new_stroke {
                     self.current_stroke = Some(crate::map::command::PaintStrokeCommand {
-                        color: self.current_brush_color.unwrap_or(ProvinceColor::new(255, 255, 255)),
+                        color: self
+                            .current_brush_color
+                            .unwrap_or(ProvinceColor::new(255, 255, 255)),
                         history: Vec::new(),
                     });
                 }
 
-                if let (Some(stroke), Some(brush_color)) = (&mut self.current_stroke, &self.current_brush_color) {
+                if let (Some(stroke), Some(brush_color)) =
+                    (&mut self.current_stroke, &self.current_brush_color)
+                {
                     let radius = self.brush_size as f32;
                     let r2 = radius * radius;
                     let width = project.width;
@@ -549,16 +563,16 @@ impl WorldSmithApp {
                                 let idx = ((py * width + px) * 3) as usize;
                                 let old_color = ProvinceColor::new(
                                     project.pixels[idx],
-                                    project.pixels[idx+1],
-                                    project.pixels[idx+2]
+                                    project.pixels[idx + 1],
+                                    project.pixels[idx + 2],
                                 );
 
                                 if old_color != *brush_color {
                                     stroke.history.push((px, py, old_color));
                                     project.pixels[idx] = brush_color.r;
-                                    project.pixels[idx+1] = brush_color.g;
-                                    project.pixels[idx+2] = brush_color.b;
-                                    
+                                    project.pixels[idx + 1] = brush_color.g;
+                                    project.pixels[idx + 2] = brush_color.b;
+
                                     let old_id = project.graph.id_from_color(&old_color);
                                     project.graph.update_pixel(px, py, old_id, new_id);
                                     changed = true;
@@ -570,7 +584,7 @@ impl WorldSmithApp {
                     if changed {
                         project.dirty_rect = Some(egui::Rect::from_min_max(
                             egui::pos2(min_x as f32, min_y as f32),
-                            egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0)
+                            egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0),
                         ));
                     }
                 }
@@ -592,11 +606,17 @@ impl WorldSmithApp {
         match self.active_tool {
             ActiveTool::Inspect => {
                 self.current_brush_color = Some(color);
-                self.status_message = format!("選択中プロヴィンス: ID {} ({}, {}, {})", id, color.r, color.g, color.b);
+                self.status_message = format!(
+                    "選択中プロヴィンス: ID {} ({}, {}, {})",
+                    id, color.r, color.g, color.b
+                );
             }
             ActiveTool::Eyedropper => {
                 self.current_brush_color = Some(color);
-                self.status_message = format!("スポイト: ID {} ({}, {}, {}) を選択しました", id, color.r, color.g, color.b);
+                self.status_message = format!(
+                    "スポイト: ID {} ({}, {}, {}) を選択しました",
+                    id, color.r, color.g, color.b
+                );
             }
             ActiveTool::Fill => {
                 if let Some(brush_color) = &self.current_brush_color {
@@ -608,7 +628,8 @@ impl WorldSmithApp {
                         let _ = self.command_stack.execute(cmd, project);
                     }
                 } else {
-                    self.status_message = "塗りつぶしには先にスポイトで色を選択してください。".to_string();
+                    self.status_message =
+                        "塗りつぶしには先にスポイトで色を選択してください。".to_string();
                 }
             }
             ActiveTool::NewProvince => {
@@ -626,7 +647,10 @@ impl WorldSmithApp {
     fn draw_menu_bar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         egui::menu::bar(ui, |ui| {
             ui.menu_button(self.i18n.tr("menu.file"), |ui| {
-                if ui.button(self.i18n.tr("menu.file.open_map_folder")).clicked() {
+                if ui
+                    .button(self.i18n.tr("menu.file.open_map_folder"))
+                    .clicked()
+                {
                     if let Some(folder) = rfd::FileDialog::new()
                         .set_title("HoI4 マップフォルダを選択")
                         .pick_folder()
@@ -676,8 +700,7 @@ impl WorldSmithApp {
                         self.status_message =
                             format!("{} {}", self.i18n.tr("settings.rng_seed_set"), seed);
                     } else {
-                        self.status_message =
-                            self.i18n.tr("settings.rng_seed_invalid");
+                        self.status_message = self.i18n.tr("settings.rng_seed_invalid");
                     }
                 }
                 if ui
@@ -705,12 +728,16 @@ impl WorldSmithApp {
         ui.label("🎨 The Painter");
         ui.horizontal(|ui| {
             ui.selectable_value(&mut self.active_tool, ActiveTool::Inspect, "👁 Inspect");
-            ui.selectable_value(&mut self.active_tool, ActiveTool::Eyedropper, "🎯 Eyedropper");
+            ui.selectable_value(
+                &mut self.active_tool,
+                ActiveTool::Eyedropper,
+                "🎯 Eyedropper",
+            );
             ui.selectable_value(&mut self.active_tool, ActiveTool::Brush, "🖌 Brush");
             ui.selectable_value(&mut self.active_tool, ActiveTool::Fill, "🪣 Fill");
             ui.selectable_value(&mut self.active_tool, ActiveTool::BoxSelect, "🔲 Select");
         });
-        
+
         if self.active_tool == ActiveTool::Brush {
             ui.horizontal(|ui| {
                 ui.label("サイズ:");
@@ -757,12 +784,13 @@ impl WorldSmithApp {
         });
 
         ui.add(
-            egui::Slider::new(&mut self.hex_config.cell_size, 16.0..=256.0)
-                .text("Hexセルサイズ"),
+            egui::Slider::new(&mut self.hex_config.cell_size, 16.0..=256.0).text("Hexセルサイズ"),
         );
         ui.add_enabled(false, egui::Button::new("ボロノイ・ブラシ"));
-                if ui.button("マップ全体をHexで再生成").clicked() {
-            let cmd = Box::new(crate::map::command::GenerateHexMapCommand::new(self.hex_config.clone()));
+        if ui.button("マップ全体をHexで再生成").clicked() {
+            let cmd = Box::new(crate::map::command::GenerateHexMapCommand::new(
+                self.hex_config.clone(),
+            ));
             if let Some(project) = &mut self.project {
                 let _ = self.command_stack.execute(cmd, project);
             }
@@ -800,16 +828,11 @@ impl WorldSmithApp {
                     ui.end_row();
 
                     ui.label("色 (RGB):");
-                    let color_str = format!(
-                        "({}, {}, {})",
-                        info.color.r, info.color.g, info.color.b
-                    );
+                    let color_str =
+                        format!("({}, {}, {})", info.color.r, info.color.g, info.color.b);
                     ui.horizontal(|ui| {
-                        let color32 = egui::Color32::from_rgb(
-                            info.color.r,
-                            info.color.g,
-                            info.color.b,
-                        );
+                        let color32 =
+                            egui::Color32::from_rgb(info.color.r, info.color.g, info.color.b);
                         ui.colored_label(color32, "■");
                         ui.label(color_str);
                     });
@@ -877,7 +900,6 @@ impl WorldSmithApp {
                     }
                 }
             });
-
         } else {
             ui.label("プロヴィンスが選択されていません。\n(Select ツールでドラッグ)");
         }
@@ -938,7 +960,11 @@ impl WorldSmithApp {
             // テクスチャの更新 (もしあれば)
             if let Some(project) = &mut self.project {
                 if project.dirty_rect.is_some() {
-                    let color_image = crate::map_loader::pixels_to_color_image(&project.pixels, project.width, project.height);
+                    let color_image = crate::map_loader::pixels_to_color_image(
+                        &project.pixels,
+                        project.width,
+                        project.height,
+                    );
                     texture.set(color_image, egui::TextureOptions::NEAREST);
                     project.dirty_rect = None;
                 }
@@ -960,7 +986,11 @@ impl WorldSmithApp {
                         (click_pos.x - top_left.x) / zoom,
                         (click_pos.y - top_left.y) / zoom,
                     );
-                    self.handle_tool_action(map_pos, ui.ctx(), response.drag_started() || response.clicked());
+                    self.handle_tool_action(
+                        map_pos,
+                        ui.ctx(),
+                        response.drag_started() || response.clicked(),
+                    );
                 }
             } else if response.drag_stopped_by(egui::PointerButton::Primary) {
                 self.finalize_stroke();
@@ -1010,19 +1040,14 @@ impl WorldSmithApp {
         if self.grid_mode == GridMode::VoronoiPoints {
             for p in &self.painter_points {
                 let map_pos = egui::Pos2::new(p.x, p.y);
-                let screen_pos =
-                    self.viewport.map_to_screen(map_pos, available_rect);
+                let screen_pos = self.viewport.map_to_screen(map_pos, available_rect);
                 let radius = 4.0;
                 painter.circle_stroke(
                     screen_pos,
                     radius,
                     egui::Stroke::new(1.5, egui::Color32::YELLOW),
                 );
-                painter.circle_filled(
-                    screen_pos,
-                    1.5,
-                    egui::Color32::YELLOW,
-                );
+                painter.circle_filled(screen_pos, 1.5, egui::Color32::YELLOW);
             }
         }
 
@@ -1030,16 +1055,12 @@ impl WorldSmithApp {
         if self.grid_mode == GridMode::HexGrid {
             // ビューポート内に見える範囲だけセルを走査
             let rect = available_rect;
-            let top_left_map =
-                self.viewport.screen_to_map(rect.min, rect);
-            let bottom_right_map =
-                self.viewport.screen_to_map(rect.max, rect);
+            let top_left_map = self.viewport.screen_to_map(rect.min, rect);
+            let bottom_right_map = self.viewport.screen_to_map(rect.max, rect);
 
             // 粗い範囲推定
-            let min_cell =
-                map_pos_to_hex_cell(top_left_map, &self.hex_config);
-            let max_cell =
-                map_pos_to_hex_cell(bottom_right_map, &self.hex_config);
+            let min_cell = map_pos_to_hex_cell(top_left_map, &self.hex_config);
+            let max_cell = map_pos_to_hex_cell(bottom_right_map, &self.hex_config);
 
             let (min_q, max_q) = if min_cell.0 <= max_cell.0 {
                 (min_cell.0 - 2, max_cell.0 + 2)
@@ -1054,14 +1075,10 @@ impl WorldSmithApp {
 
             for q in min_q..=max_q {
                 for r in min_r..=max_r {
-                    let poly =
-                        hex_cell_to_polygon((q, r), &self.hex_config);
+                    let poly = hex_cell_to_polygon((q, r), &self.hex_config);
                     let mut points_screen = Vec::with_capacity(6);
                     for mp in poly.iter() {
-                        points_screen.push(
-                            self.viewport
-                                .map_to_screen(*mp, available_rect),
-                        );
+                        points_screen.push(self.viewport.map_to_screen(*mp, available_rect));
                     }
                     let mut lines = points_screen.clone();
                     if let Some(first) = lines.first().copied() {
@@ -1071,9 +1088,7 @@ impl WorldSmithApp {
                         lines,
                         egui::Stroke::new(
                             0.5,
-                            egui::Color32::from_rgba_unmultiplied(
-                                200, 200, 255, 80,
-                            ),
+                            egui::Color32::from_rgba_unmultiplied(200, 200, 255, 80),
                         ),
                     );
                 }

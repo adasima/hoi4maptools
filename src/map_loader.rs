@@ -1,7 +1,6 @@
 /// BMP マップファイルの読み込みとエクスポート。
 /// provinces.bmp の RGB 値を完全に正確に読み書きする。
-
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use image::{ImageBuffer, RgbImage};
 use std::path::Path;
 
@@ -75,8 +74,8 @@ mod tests {
         let width = 2u32;
         let height = 2u32;
         let pixels: Vec<u8> = vec![
-            255, 0, 0,     0, 255, 0,   // 赤, 緑
-            0, 0, 255,   128, 64, 32,   // 青, 茶
+            255, 0, 0, 0, 255, 0, // 赤, 緑
+            0, 0, 255, 128, 64, 32, // 青, 茶
         ];
 
         let tmp_path = std::env::temp_dir().join("ws_test_roundtrip.bmp");
@@ -90,7 +89,10 @@ mod tests {
         assert_eq!(w2, width);
         assert_eq!(h2, height);
         // RGB値が完全に一致することを確認 (ロスレス)
-        assert_eq!(pixels, pixels2, "BMP ラウンドトリップで RGB 値が劣化しました！");
+        assert_eq!(
+            pixels, pixels2,
+            "BMP ラウンドトリップで RGB 値が劣化しました！"
+        );
 
         let _ = std::fs::remove_file(&tmp_path);
     }

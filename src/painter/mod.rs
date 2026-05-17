@@ -47,10 +47,8 @@ pub fn hex_cell_to_polygon(cell: (i32, i32), config: &HexGridConfig) -> [egui::P
     let fr = r as f32;
 
     // セル中心座標（平行六角形近似）
-    let cx =
-        config.origin.x + fq * (config.cell_size * 3f32.sqrt() / 2.0);
-    let cy =
-        config.origin.y + fr * config.cell_size;
+    let cx = config.origin.x + fq * (config.cell_size * 3f32.sqrt() / 2.0);
+    let cy = config.origin.y + fr * config.cell_size;
 
     let mut points = [egui::Pos2::ZERO; 6];
     for i in 0..6 {
@@ -73,4 +71,3 @@ mod tests {
         assert!(cfg.cell_size > 0.0);
     }
 }
-

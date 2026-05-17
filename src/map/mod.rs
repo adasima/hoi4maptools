@@ -1,10 +1,10 @@
-pub mod graph;
-pub mod definition;
 pub mod command;
+pub mod definition;
+pub mod graph;
 
-use std::path::PathBuf;
 use crate::map::definition::DefinitionTable;
 use crate::map::graph::ProvinceGraph;
+use std::path::PathBuf;
 
 use eframe::egui;
 
