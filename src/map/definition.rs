@@ -2,7 +2,6 @@
 /// HoI4 の definition.csv フォーマット:
 ///   provinceId;r;g;b;type;isCoastal;terrain;continent
 /// 例: 1;128;0;64;land;false;plains;1
-
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
@@ -52,6 +51,7 @@ pub struct ProvinceDefinition {
 }
 
 /// definition.csv を管理する構造体。
+#[derive(Debug, Clone)]
 pub struct DefinitionTable {
     /// ID順のエントリ
     entries: Vec<ProvinceDefinition>,
@@ -121,23 +121,29 @@ impl DefinitionTable {
             found_data = true;
 
             // RGB
-            let r: u8 = parts[1].trim().parse().with_context(|| {
-                format!("行 {}: R値の解析に失敗", line_no + 1)
-            })?;
-            let g: u8 = parts[2].trim().parse().with_context(|| {
-                format!("行 {}: G値の解析に失敗", line_no + 1)
-            })?;
-            let b: u8 = parts[3].trim().parse().with_context(|| {
-                format!("行 {}: B値の解析に失敗", line_no + 1)
-            })?;
+            let r: u8 = parts[1]
+                .trim()
+                .parse()
+                .with_context(|| format!("行 {}: R値の解析に失敗", line_no + 1))?;
+            let g: u8 = parts[2]
+                .trim()
+                .parse()
+                .with_context(|| format!("行 {}: G値の解析に失敗", line_no + 1))?;
+            let b: u8 = parts[3]
+                .trim()
+                .parse()
+                .with_context(|| format!("行 {}: B値の解析に失敗", line_no + 1))?;
 
             let color = ProvinceColor::new(r, g, b);
             let province_type = ProvinceType::from_str(parts.get(4).unwrap_or(&"land"));
-            let is_coastal = parts.get(5).map_or(false, |s| {
-                s.trim().to_lowercase() == "true"
-            });
+            let is_coastal = parts
+                .get(5)
+                .map_or(false, |s| s.trim().to_lowercase() == "true");
             let terrain = parts.get(6).unwrap_or(&"unknown").trim().to_string();
-            let continent: u32 = parts.get(7).and_then(|s| s.trim().parse().ok()).unwrap_or(0);
+            let continent: u32 = parts
+                .get(7)
+                .and_then(|s| s.trim().parse().ok())
+                .unwrap_or(0);
 
             // 残りのフィールドを保持
             let raw_extra_fields: Vec<String> = parts[8..].iter().map(|s| s.to_string()).collect();
@@ -156,7 +162,10 @@ impl DefinitionTable {
             entries.push(def);
         }
 
-        log::info!("definition.csv: {}個のプロヴィンスを読み込み", entries.len());
+        log::info!(
+            "definition.csv: {}個のプロヴィンスを読み込み",
+            entries.len()
+        );
 
         Ok(Self {
             entries,
@@ -202,7 +211,10 @@ impl DefinitionTable {
         std::fs::write(path, &output)
             .with_context(|| format!("definition.csv の書き出しに失敗: {}", path.display()))?;
 
-        log::info!("definition.csv: {}個のプロヴィンスを書き出し", self.entries.len());
+        log::info!(
+            "definition.csv: {}個のプロヴィンスを書き出し",
+            self.entries.len()
+        );
         Ok(())
     }
 
@@ -213,6 +225,11 @@ impl DefinitionTable {
     }
 
     /// IDで検索。
+
+    pub fn get_mut(&mut self, id: ProvinceId) -> Option<&mut ProvinceDefinition> {
+        self.entries.iter_mut().find(|def| def.id == id)
+    }
+
     pub fn get(&self, id: ProvinceId) -> Option<&ProvinceDefinition> {
         self.entries.iter().find(|e| e.id == id)
     }
@@ -223,6 +240,10 @@ impl DefinitionTable {
     }
 
     /// 使用中のRGB色キーの集合を返す。
+    pub fn get_color_map(&self) -> &std::collections::HashMap<u32, ProvinceId> {
+        &self.color_to_id
+    }
+
     pub fn used_colors(&self) -> std::collections::HashSet<u32> {
         self.color_to_id.keys().copied().collect()
     }

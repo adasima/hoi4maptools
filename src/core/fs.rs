@@ -1,6 +1,5 @@
 /// 仮想ファイルシステム (VFS)
 /// HoI4 の Mod > DLC > Vanilla の優先順位でファイルを解決する。
-
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
@@ -70,8 +69,7 @@ impl ParadoxPathResolver {
     /// ファイルを読み込む。最優先で見つかったものを返す。
     pub fn read_file(&self, relative_path: &Path) -> Result<Vec<u8>> {
         let path = self.resolve_required(relative_path)?;
-        std::fs::read(&path)
-            .with_context(|| format!("ファイル読み込みに失敗: {}", path.display()))
+        std::fs::read(&path).with_context(|| format!("ファイル読み込みに失敗: {}", path.display()))
     }
 
     /// テキストファイルを読み込む。
