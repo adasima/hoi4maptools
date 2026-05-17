@@ -1,6 +1,5 @@
 /// Undo/Redo を支えるコマンドパターン。
 /// 全ての編集操作はこのトレイトを実装する。
-
 use anyhow::Result;
 use std::fmt;
 
@@ -130,7 +129,10 @@ mod tests {
         let mut stack = CommandStack::<i32>::new(100);
         let mut ctx = 0i32;
 
-        let cmd = Box::new(TestCommand { value: 42, executed: false });
+        let cmd = Box::new(TestCommand {
+            value: 42,
+            executed: false,
+        });
         stack.execute(cmd, &mut ctx).unwrap();
         assert_eq!(ctx, 42);
 
@@ -153,7 +155,10 @@ mod tests {
         let mut ctx = 0i32;
 
         for i in 0..5 {
-            let cmd = Box::new(TestCommand { value: i, executed: false });
+            let cmd = Box::new(TestCommand {
+                value: i,
+                executed: false,
+            });
             stack.execute(cmd, &mut ctx).unwrap();
         }
 

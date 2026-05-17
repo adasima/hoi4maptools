@@ -1,9 +1,9 @@
 mod app;
 mod core;
 mod map;
-mod renderer;
 mod map_loader;
 mod painter;
+mod renderer;
 
 fn main() -> eframe::Result<()> {
     env_logger::init();

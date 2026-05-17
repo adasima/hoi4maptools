@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # vから始まるタグ（例: v0.1.0）がプッシュされた時のみ実行
+
+jobs:
+  build-and-release:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: world_smith
+            asset_name: world_smith-linux-x86_64
+          - os: windows-latest
+            artifact_name: world_smith.exe
+            asset_name: world_smith-windows-x86_64
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # Ubuntu用の依存関係
+    - name: Install dependencies (Ubuntu only)
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libx11-xcb-dev libxext-dev
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Build Release
+      run: cargo build --release
+
+    - name: Prepare Assets (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        mkdir release_package
+        copy target\release\${{ matrix.artifact_name }} release_package\
+        # assetsフォルダ等、実行に必要なリソースがあれば同梱する
+        xcopy /E /I assets release_package\assets
+        Compress-Archive -Path release_package\* -DestinationPath ${{ matrix.asset_name }}.zip
+
+    - name: Prepare Assets (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        mkdir release_package
+        cp target/release/${{ matrix.artifact_name }} release_package/
+        cp -r assets release_package/ || true
+        cd release_package && tar -czvf ../${{ matrix.asset_name }}.tar.gz ./*
+
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ${{ matrix.asset_name }}.zip
+          ${{ matrix.asset_name }}.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,6 @@
 use crate::core::command::Command;
-use crate::map::ProjectState;
 use crate::map::graph::{ProvinceColor, ProvinceId};
+use crate::map::ProjectState;
 use anyhow::Result;
 use eframe::egui;
 
@@ -28,8 +28,10 @@ impl Command<ProjectState> for FillCommand {
 
 impl FillCommand {
     fn apply(project: &mut ProjectState, from: ProvinceColor, to: ProvinceColor) -> Result<()> {
-        if from == to { return Ok(()); }
-        
+        if from == to {
+            return Ok(());
+        }
+
         let width = project.width;
         let height = project.height;
         let old_id = project.graph.id_from_color(&from);
@@ -38,7 +40,10 @@ impl FillCommand {
         for y in 0..height {
             for x in 0..width {
                 let idx = ((y * width + x) * 3) as usize;
-                if project.pixels[idx] == from.r && project.pixels[idx + 1] == from.g && project.pixels[idx + 2] == from.b {
+                if project.pixels[idx] == from.r
+                    && project.pixels[idx + 1] == from.g
+                    && project.pixels[idx + 2] == from.b
+                {
                     project.pixels[idx] = to.r;
                     project.pixels[idx + 1] = to.g;
                     project.pixels[idx + 2] = to.b;
@@ -51,9 +56,9 @@ impl FillCommand {
         // 全体を dirty に設定
         project.dirty_rect = Some(egui::Rect::from_min_max(
             egui::pos2(0.0, 0.0),
-            egui::pos2(width as f32, height as f32)
+            egui::pos2(width as f32, height as f32),
         ));
-        
+
         Ok(())
     }
 }
@@ -80,7 +85,7 @@ impl Command<ProjectState> for PaintStrokeCommand {
             project.pixels[idx] = self.color.r;
             project.pixels[idx + 1] = self.color.g;
             project.pixels[idx + 2] = self.color.b;
-            
+
             let old_id = project.graph.id_from_color(old_color);
             project.graph.update_pixel(*x, *y, old_id, new_id);
 
@@ -93,7 +98,7 @@ impl Command<ProjectState> for PaintStrokeCommand {
         if !self.history.is_empty() {
             project.dirty_rect = Some(egui::Rect::from_min_max(
                 egui::pos2(min_x as f32, min_y as f32),
-                egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0)
+                egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0),
             ));
         }
 
@@ -105,7 +110,7 @@ impl Command<ProjectState> for PaintStrokeCommand {
         let mut min_y = u32::MAX;
         let mut max_x = 0u32;
         let mut max_y = 0u32;
-        
+
         let new_id = project.graph.id_from_color(&self.color);
 
         for (x, y, old_color) in &self.history {
@@ -113,7 +118,7 @@ impl Command<ProjectState> for PaintStrokeCommand {
             project.pixels[idx] = old_color.r;
             project.pixels[idx + 1] = old_color.g;
             project.pixels[idx + 2] = old_color.b;
-            
+
             let old_id = project.graph.id_from_color(old_color);
             project.graph.update_pixel(*x, *y, new_id, old_id);
 
@@ -126,7 +131,7 @@ impl Command<ProjectState> for PaintStrokeCommand {
         if !self.history.is_empty() {
             project.dirty_rect = Some(egui::Rect::from_min_max(
                 egui::pos2(min_x as f32, min_y as f32),
-                egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0)
+                egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0),
             ));
         }
 
@@ -183,7 +188,7 @@ impl Command<ProjectState> for NewProvinceCommand {
         if !self.history.is_empty() {
             project.dirty_rect = Some(egui::Rect::from_min_max(
                 egui::pos2(min_x as f32, min_y as f32),
-                egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0)
+                egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0),
             ));
         }
 
@@ -221,7 +226,7 @@ impl Command<ProjectState> for NewProvinceCommand {
         if !self.history.is_empty() {
             project.dirty_rect = Some(egui::Rect::from_min_max(
                 egui::pos2(min_x as f32, min_y as f32),
-                egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0)
+                egui::pos2(max_x as f32 + 1.0, max_y as f32 + 1.0),
             ));
         }
 
@@ -241,7 +246,8 @@ pub struct EditProvincesCommand {
     pub new_province_type: Option<crate::map::definition::ProvinceType>,
     pub new_continent: Option<u32>,
     /// (変更前の地形, 変更前のタイプ, 変更前の大陸)
-    pub history: std::collections::HashMap<ProvinceId, (String, crate::map::definition::ProvinceType, u32)>,
+    pub history:
+        std::collections::HashMap<ProvinceId, (String, crate::map::definition::ProvinceType, u32)>,
 }
 
 impl Command<ProjectState> for EditProvincesCommand {
@@ -249,7 +255,14 @@ impl Command<ProjectState> for EditProvincesCommand {
         self.history.clear();
         for &id in &self.province_ids {
             if let Some(def) = project.definitions.get_mut(id) {
-                self.history.insert(id, (def.terrain.clone(), def.province_type.clone(), def.continent));
+                self.history.insert(
+                    id,
+                    (
+                        def.terrain.clone(),
+                        def.province_type.clone(),
+                        def.continent,
+                    ),
+                );
                 if let Some(t) = &self.new_terrain {
                     def.terrain = t.clone();
                 }
@@ -318,7 +331,10 @@ impl Command<ProjectState> for GenerateHexMapCommand {
 
                 let color = *hex_to_id.entry(cell).or_insert_with(|| {
                     // 新しい色とIDを割り当てる
-                    let new_color = project.definitions.allocate_unused_color().unwrap_or(ProvinceColor::new(255, 255, 255));
+                    let new_color = project
+                        .definitions
+                        .allocate_unused_color()
+                        .unwrap_or(ProvinceColor::new(255, 255, 255));
                     project.definitions.add_province(
                         new_color,
                         crate::map::definition::ProvinceType::Land,
@@ -330,13 +346,18 @@ impl Command<ProjectState> for GenerateHexMapCommand {
 
                 let idx = ((y * width + x) * 3) as usize;
                 project.pixels[idx] = color.r;
-                project.pixels[idx+1] = color.g;
-                project.pixels[idx+2] = color.b;
+                project.pixels[idx + 1] = color.g;
+                project.pixels[idx + 2] = color.b;
             }
         }
 
         // グラフ再構築
-        project.graph = crate::map::graph::ProvinceGraph::build_from_pixels(&project.pixels, width, height, project.definitions.get_color_map());
+        project.graph = crate::map::graph::ProvinceGraph::build_from_pixels(
+            &project.pixels,
+            width,
+            height,
+            project.definitions.get_color_map(),
+        );
 
         project.dirty_rect = Some(eframe::egui::Rect::from_min_max(
             eframe::egui::pos2(0.0, 0.0),
@@ -349,7 +370,12 @@ impl Command<ProjectState> for GenerateHexMapCommand {
     fn undo(&mut self, project: &mut ProjectState) -> Result<()> {
         project.pixels = self.old_pixels.clone();
         project.definitions = self.old_definitions.clone();
-        project.graph = crate::map::graph::ProvinceGraph::build_from_pixels(&project.pixels, project.width, project.height, project.definitions.get_color_map());
+        project.graph = crate::map::graph::ProvinceGraph::build_from_pixels(
+            &project.pixels,
+            project.width,
+            project.height,
+            project.definitions.get_color_map(),
+        );
 
         project.dirty_rect = Some(eframe::egui::Rect::from_min_max(
             eframe::egui::pos2(0.0, 0.0),
