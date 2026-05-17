@@ -7,7 +7,8 @@ on:
 jobs:
   auto-merge:
     # PRの本文に「Julesが自動作成した」という一文が含まれている時だけ起動！
-    if: contains(github.event.pull_request.body, 'PR created automatically by Jules')
+# 作成者が「adasima」か「jules[bot]」であり、かつJulesの署名がある場合のみ起動（偽装防止）
+    if: (github.actor == 'adasima' || github.actor == 'google-labs-jules[bot]') && contains(github.event.pull_request.body, 'PR created automatically by Jules')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
