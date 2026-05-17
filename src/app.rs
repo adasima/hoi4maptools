@@ -929,8 +929,7 @@ impl WorldSmithApp {
         let offset = self.viewport.offset;
 
         // マップ描画
-        let texture_opt = self.map_texture.clone();
-        if let Some(mut texture) = texture_opt {
+        if let Some(texture) = &mut self.map_texture {
             let tex_size = texture.size_vec2();
             let scaled_size = tex_size * zoom;
 
