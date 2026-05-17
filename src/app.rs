@@ -398,7 +398,7 @@ impl WorldSmithApp {
     }
 
     /// クリック位置から連結成分単位で新規プロヴィンスを切り出す。
-    fn create_new_province_at(&mut self, map_pos: egui::Pos2, ctx: &egui::Context) {
+    fn create_new_province_at(&mut self, map_pos: egui::Pos2, _ctx: &egui::Context) {
         let Some(project) = &mut self.project else {
             self.status_message = "マップが読み込まれていません。".to_string();
             return;
@@ -553,7 +553,7 @@ impl WorldSmithApp {
                     let max_y = (map_pos.y + radius).min(height as f32 - 1.0) as u32;
 
                     let mut changed = false;
-                    let new_id = project.graph.id_from_color(&*brush_color);
+                    let new_id = project.graph.id_from_color(brush_color);
 
                     for py in min_y..=max_y {
                         for px in min_x..=max_x {

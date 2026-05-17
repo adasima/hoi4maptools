@@ -138,7 +138,7 @@ impl DefinitionTable {
             let province_type = ProvinceType::from_str(parts.get(4).unwrap_or(&"land"));
             let is_coastal = parts
                 .get(5)
-                .map_or(false, |s| s.trim().to_lowercase() == "true");
+                .is_some_and(|s| s.trim().to_lowercase() == "true");
             let terrain = parts.get(6).unwrap_or(&"unknown").trim().to_string();
             let continent: u32 = parts
                 .get(7)
@@ -225,7 +225,6 @@ impl DefinitionTable {
     }
 
     /// IDで検索。
-
     pub fn get_mut(&mut self, id: ProvinceId) -> Option<&mut ProvinceDefinition> {
         self.entries.iter_mut().find(|def| def.id == id)
     }

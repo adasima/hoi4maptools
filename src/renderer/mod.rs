@@ -2,7 +2,6 @@ use eframe::egui;
 
 /// レンダラーモジュール。
 /// Dirty Rect トラッキングとレイヤー合成を管理する。
-
 /// 変更された矩形領域を追跡し、テクスチャの部分更新を可能にする。
 #[derive(Debug, Clone)]
 pub struct DirtyRect {
@@ -173,5 +172,38 @@ mod tests {
 
         // 取得後はクリーン
         assert!(!tracker.is_dirty());
+    }
+
+    #[test]
+    fn test_coordinate_transforms() {
+        let mut viewport = MapViewport::new();
+        viewport.zoom = 2.0;
+        viewport.offset = egui::Vec2::new(10.0, 20.0);
+
+        let viewport_rect =
+            egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(800.0, 600.0));
+
+        // Center is (400, 300)
+
+        // Test map_to_screen
+        // Map pos: (100, 50)
+        // Screen X = (100 + 10) * 2 + 400 = 110 * 2 + 400 = 620
+        // Screen Y = (50 + 20) * 2 + 300 = 70 * 2 + 300 = 440
+        let map_pos = egui::pos2(100.0, 50.0);
+        let screen_pos = viewport.map_to_screen(map_pos, viewport_rect);
+        assert_eq!(screen_pos.x, 620.0);
+        assert_eq!(screen_pos.y, 440.0);
+
+        // Test screen_to_map
+        let converted_map_pos = viewport.screen_to_map(screen_pos, viewport_rect);
+        assert_eq!(converted_map_pos.x, 100.0);
+        assert_eq!(converted_map_pos.y, 50.0);
+
+        // Test roundtrip
+        let original_screen_pos = egui::pos2(123.0, 456.0);
+        let map_pos2 = viewport.screen_to_map(original_screen_pos, viewport_rect);
+        let screen_pos2 = viewport.map_to_screen(map_pos2, viewport_rect);
+        assert!((original_screen_pos.x - screen_pos2.x).abs() < 1e-4);
+        assert!((original_screen_pos.y - screen_pos2.y).abs() < 1e-4);
     }
 }
