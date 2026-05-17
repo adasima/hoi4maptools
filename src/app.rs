@@ -305,16 +305,11 @@ impl WorldSmithApp {
         };
 
         if let Some((id, color)) = self.pick_province_at(map_pos) {
-            let province_type = project
+            let (province_type, terrain) = project
                 .definitions
                 .get(id)
-                .map(|d| d.province_type.as_str().to_string())
-                .unwrap_or_else(|| "不明".to_string());
-            let terrain = project
-                .definitions
-                .get(id)
-                .map(|d| d.terrain.clone())
-                .unwrap_or_else(|| "不明".to_string());
+                .map(|d| (d.province_type.as_str().to_string(), d.terrain.clone()))
+                .unwrap_or_else(|| ("不明".to_string(), "不明".to_string()));
             let pixel_count = project
                 .graph
                 .get_province(id)
