@@ -114,7 +114,6 @@ impl ProvinceGraph {
     ) -> Self {
         let mut provinces: HashMap<ProvinceId, ProvinceData> = HashMap::new();
         let mut adjacency: HashMap<ProvinceId, HashSet<ProvinceId>> = HashMap::new();
-        let color_to_id = color_id_map.clone();
 
         // 各ピクセルに対して集計する用のアキュムレータ
         struct Accum {
@@ -138,7 +137,7 @@ impl ProvinceGraph {
                 let b = pixels[idx + 2];
                 let key = (r as u32) << 16 | (g as u32) << 8 | b as u32;
 
-                let Some(&id) = color_to_id.get(&key) else {
+                let Some(&id) = color_id_map.get(&key) else {
                     continue; // 未知の色はスキップ
                 };
 
@@ -179,7 +178,7 @@ impl ProvinceGraph {
                     let nkey = (nr as u32) << 16 | (ng as u32) << 8 | nb as u32;
 
                     if nkey != key {
-                        if let Some(&nid) = color_to_id.get(&nkey) {
+                        if let Some(&nid) = color_id_map.get(&nkey) {
                             adjacency.entry(id).or_default().insert(nid);
                         }
                     }
@@ -191,7 +190,7 @@ impl ProvinceGraph {
         let mut spatial_entries = Vec::new();
         for (&id, acc) in &accumulators {
             let centroid = [acc.sum_x / acc.count as f64, acc.sum_y / acc.count as f64];
-            let color_key = color_to_id
+            let color_key = color_id_map
                 .iter()
                 .find(|(_, &v)| v == id)
                 .map(|(&k, _)| k)
@@ -216,7 +215,7 @@ impl ProvinceGraph {
         Self {
             provinces,
             adjacency,
-            color_to_id,
+            color_to_id: color_id_map.clone(),
             spatial_index,
         }
     }
