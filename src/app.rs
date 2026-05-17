@@ -87,7 +87,7 @@ impl WorldSmithApp {
             .join("i18n");
         let i18n = I18n::from_assets_dir(i18n_assets, "ja-JP").unwrap_or_else(|_| {
             log::warn!("i18n 初期化に失敗しました。キー文字列をそのまま表示します。");
-            I18n::from_assets_dir(std::env::temp_dir(), "ja-JP").unwrap()
+            I18n::empty("ja-JP")
         });
         let default_seed = 42u64;
         Self {

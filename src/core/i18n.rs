@@ -46,6 +46,13 @@ impl I18n {
         })
     }
 
+    pub fn empty(default_locale: &str) -> Self {
+        Self {
+            bundles: HashMap::new(),
+            current_locale: default_locale.to_string(),
+        }
+    }
+
     pub fn set_locale(&mut self, locale: &str) {
         if self.bundles.contains_key(locale) {
             self.current_locale = locale.to_string();
