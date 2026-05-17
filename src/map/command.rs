@@ -232,3 +232,133 @@ impl Command<ProjectState> for NewProvinceCommand {
         "新規プロヴィンス作成"
     }
 }
+
+/// 複数プロヴィンス一括編集コマンド
+#[derive(Debug)]
+pub struct EditProvincesCommand {
+    pub province_ids: std::collections::HashSet<ProvinceId>,
+    pub new_terrain: Option<String>,
+    pub new_province_type: Option<crate::map::definition::ProvinceType>,
+    pub new_continent: Option<u32>,
+    /// (変更前の地形, 変更前のタイプ, 変更前の大陸)
+    pub history: std::collections::HashMap<ProvinceId, (String, crate::map::definition::ProvinceType, u32)>,
+}
+
+impl Command<ProjectState> for EditProvincesCommand {
+    fn execute(&mut self, project: &mut ProjectState) -> Result<()> {
+        self.history.clear();
+        for &id in &self.province_ids {
+            if let Some(def) = project.definitions.get_mut(id) {
+                self.history.insert(id, (def.terrain.clone(), def.province_type.clone(), def.continent));
+                if let Some(t) = &self.new_terrain {
+                    def.terrain = t.clone();
+                }
+                if let Some(pt) = &self.new_province_type {
+                    def.province_type = pt.clone();
+                }
+                if let Some(c) = self.new_continent {
+                    def.continent = c;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn undo(&mut self, project: &mut ProjectState) -> Result<()> {
+        for (id, (old_t, old_pt, old_c)) in &self.history {
+            if let Some(def) = project.definitions.get_mut(*id) {
+                def.terrain = old_t.clone();
+                def.province_type = old_pt.clone();
+                def.continent = *old_c;
+            }
+        }
+        Ok(())
+    }
+
+    fn description(&self) -> &str {
+        "プロパティ一括編集"
+    }
+}
+
+/// マップ全体をHexグリッドで生成するコマンド
+#[derive(Debug)]
+pub struct GenerateHexMapCommand {
+    pub hex_config: crate::painter::HexGridConfig,
+    // 実行前の状態のバックアップ
+    old_pixels: Vec<u8>,
+    old_definitions: crate::map::definition::DefinitionTable,
+}
+
+impl GenerateHexMapCommand {
+    pub fn new(hex_config: crate::painter::HexGridConfig) -> Self {
+        Self {
+            hex_config,
+            old_pixels: Vec::new(),
+            old_definitions: crate::map::definition::DefinitionTable::new(),
+        }
+    }
+}
+
+impl Command<ProjectState> for GenerateHexMapCommand {
+    fn execute(&mut self, project: &mut ProjectState) -> Result<()> {
+        // バックアップ
+        self.old_pixels = project.pixels.clone();
+        self.old_definitions = project.definitions.clone();
+
+        project.definitions = crate::map::definition::DefinitionTable::new(); // 一旦クリア
+        let mut hex_to_id = std::collections::HashMap::new();
+
+        let width = project.width;
+        let height = project.height;
+
+        for y in 0..height {
+            for x in 0..width {
+                let map_pos = eframe::egui::pos2(x as f32, y as f32);
+                let cell = crate::painter::map_pos_to_hex_cell(map_pos, &self.hex_config);
+
+                let color = *hex_to_id.entry(cell).or_insert_with(|| {
+                    // 新しい色とIDを割り当てる
+                    let new_color = project.definitions.allocate_unused_color().unwrap_or(ProvinceColor::new(255, 255, 255));
+                    project.definitions.add_province(
+                        new_color,
+                        crate::map::definition::ProvinceType::Land,
+                        "plains",
+                        1,
+                    );
+                    new_color
+                });
+
+                let idx = ((y * width + x) * 3) as usize;
+                project.pixels[idx] = color.r;
+                project.pixels[idx+1] = color.g;
+                project.pixels[idx+2] = color.b;
+            }
+        }
+
+        // グラフ再構築
+        project.graph = crate::map::graph::ProvinceGraph::build_from_pixels(&project.pixels, width, height, project.definitions.get_color_map());
+
+        project.dirty_rect = Some(eframe::egui::Rect::from_min_max(
+            eframe::egui::pos2(0.0, 0.0),
+            eframe::egui::pos2(width as f32, height as f32),
+        ));
+
+        Ok(())
+    }
+
+    fn undo(&mut self, project: &mut ProjectState) -> Result<()> {
+        project.pixels = self.old_pixels.clone();
+        project.definitions = self.old_definitions.clone();
+        project.graph = crate::map::graph::ProvinceGraph::build_from_pixels(&project.pixels, project.width, project.height, project.definitions.get_color_map());
+
+        project.dirty_rect = Some(eframe::egui::Rect::from_min_max(
+            eframe::egui::pos2(0.0, 0.0),
+            eframe::egui::pos2(project.width as f32, project.height as f32),
+        ));
+        Ok(())
+    }
+
+    fn description(&self) -> &str {
+        "Hexマップの全体生成"
+    }
+}

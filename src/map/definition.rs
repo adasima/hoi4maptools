@@ -52,6 +52,7 @@ pub struct ProvinceDefinition {
 }
 
 /// definition.csv を管理する構造体。
+#[derive(Debug, Clone)]
 pub struct DefinitionTable {
     /// ID順のエントリ
     entries: Vec<ProvinceDefinition>,
@@ -213,6 +214,11 @@ impl DefinitionTable {
     }
 
     /// IDで検索。
+
+    pub fn get_mut(&mut self, id: ProvinceId) -> Option<&mut ProvinceDefinition> {
+        self.entries.iter_mut().find(|def| def.id == id)
+    }
+
     pub fn get(&self, id: ProvinceId) -> Option<&ProvinceDefinition> {
         self.entries.iter().find(|e| e.id == id)
     }
@@ -223,6 +229,10 @@ impl DefinitionTable {
     }
 
     /// 使用中のRGB色キーの集合を返す。
+        pub fn get_color_map(&self) -> &std::collections::HashMap<u32, ProvinceId> {
+        &self.color_to_id
+    }
+
     pub fn used_colors(&self) -> std::collections::HashSet<u32> {
         self.color_to_id.keys().copied().collect()
     }
