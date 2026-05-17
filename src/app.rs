@@ -205,12 +205,14 @@ impl WorldSmithApp {
             dirty_rect: None,
         });
 
-        self.status_message = format!(
-            "✅ マップ読み込み完了: {}x{} | {} プロヴィンス",
-            width,
-            height,
-            self.project.as_ref().unwrap().graph.province_count()
-        );
+        if let Some(project) = &self.project {
+            self.status_message = format!(
+                "✅ マップ読み込み完了: {}x{} | {} プロヴィンス",
+                width,
+                height,
+                project.graph.province_count()
+            );
+        }
 
         // コマンド履歴をクリア
         self.command_stack.clear();
