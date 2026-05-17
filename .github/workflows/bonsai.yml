@@ -1,0 +1,19 @@
+name: Jules Auto-Bonsai
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  auto-merge:
+    # Jules[bot] が作ったPRのときだけ起動する
+    if: github.actor == 'google-labs-jules[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Enable Auto-merge for Jules
+        run: gh pr merge "${{ github.event.pull_request.html_url }}" --squash --auto
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
