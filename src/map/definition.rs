@@ -232,11 +232,17 @@ impl DefinitionTable {
 
     /// IDで検索。
     pub fn get_mut(&mut self, id: ProvinceId) -> Option<&mut ProvinceDefinition> {
-        self.id_to_index.get(&id).copied().and_then(|idx| self.entries.get_mut(idx))
+        self.id_to_index
+            .get(&id)
+            .copied()
+            .and_then(|idx| self.entries.get_mut(idx))
     }
 
     pub fn get(&self, id: ProvinceId) -> Option<&ProvinceDefinition> {
-        self.id_to_index.get(&id).copied().and_then(|idx| self.entries.get(idx))
+        self.id_to_index
+            .get(&id)
+            .copied()
+            .and_then(|idx| self.entries.get(idx))
     }
 
     /// 全エントリのイテレータ。

@@ -37,8 +37,24 @@ impl FillCommand {
         let old_id = project.graph.id_from_color(&from);
         let new_id = project.graph.id_from_color(&to);
 
-        for y in 0..height {
-            for x in 0..width {
+        let (min_x, min_y, max_x, max_y) = if let Some(oid) = old_id {
+            if let Some(data) = project.graph.get_province(oid) {
+                let b = data.bounds;
+                (
+                    b[0].min(width.saturating_sub(1)),
+                    b[1].min(height.saturating_sub(1)),
+                    b[2].min(width.saturating_sub(1)),
+                    b[3].min(height.saturating_sub(1)),
+                )
+            } else {
+                (0, 0, width.saturating_sub(1), height.saturating_sub(1))
+            }
+        } else {
+            (0, 0, width.saturating_sub(1), height.saturating_sub(1))
+        };
+
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
                 let idx = ((y * width + x) * 3) as usize;
                 if project.pixels[idx] == from.r
                     && project.pixels[idx + 1] == from.g
