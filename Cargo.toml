@@ -50,3 +50,7 @@ criterion = "0.8.2"
 [[bench]]
 name = "app_bench"
 harness = false
+
+[[bench]]
+name = "definition_bench"
+harness = false
