@@ -57,6 +57,8 @@ pub struct DefinitionTable {
     entries: Vec<ProvinceDefinition>,
     /// RGB色キー -> ID のルックアップ
     color_to_id: HashMap<u32, ProvinceId>,
+    /// ID -> インデックス のルックアップ
+    id_to_index: HashMap<ProvinceId, usize>,
     /// ファイル先頭のコメント/ヘッダー行を保持 (書き出し時に維持)
     header_lines: Vec<String>,
 }
@@ -67,6 +69,7 @@ impl DefinitionTable {
         Self {
             entries: Vec::new(),
             color_to_id: HashMap::new(),
+            id_to_index: HashMap::new(),
             header_lines: Vec::new(),
         }
     }
@@ -84,6 +87,7 @@ impl DefinitionTable {
     pub fn parse(content: &str) -> Result<Self> {
         let mut entries = Vec::new();
         let mut color_to_id = HashMap::new();
+        let mut id_to_index = HashMap::new();
         let mut header_lines = Vec::new();
         let mut found_data = false;
 
@@ -159,6 +163,7 @@ impl DefinitionTable {
             };
 
             color_to_id.insert(color.to_key(), id);
+            id_to_index.insert(id, entries.len());
             entries.push(def);
         }
 
@@ -170,6 +175,7 @@ impl DefinitionTable {
         Ok(Self {
             entries,
             color_to_id,
+            id_to_index,
             header_lines,
         })
     }
@@ -226,11 +232,11 @@ impl DefinitionTable {
 
     /// IDで検索。
     pub fn get_mut(&mut self, id: ProvinceId) -> Option<&mut ProvinceDefinition> {
-        self.entries.iter_mut().find(|def| def.id == id)
+        self.id_to_index.get(&id).copied().and_then(|idx| self.entries.get_mut(idx))
     }
 
     pub fn get(&self, id: ProvinceId) -> Option<&ProvinceDefinition> {
-        self.entries.iter().find(|e| e.id == id)
+        self.id_to_index.get(&id).copied().and_then(|idx| self.entries.get(idx))
     }
 
     /// 全エントリのイテレータ。
@@ -286,15 +292,19 @@ impl DefinitionTable {
         };
 
         self.color_to_id.insert(color.to_key(), next_id);
+        self.id_to_index.insert(next_id, self.entries.len());
         self.entries.push(def);
         next_id
     }
 
     /// IDを指定してプロヴィンス定義を削除する。(Undo用)
     pub fn remove(&mut self, id: ProvinceId) {
-        if let Some(pos) = self.entries.iter().position(|e| e.id == id) {
+        if let Some(pos) = self.id_to_index.remove(&id) {
             let entry = self.entries.remove(pos);
             self.color_to_id.remove(&entry.color.to_key());
+            for i in pos..self.entries.len() {
+                self.id_to_index.insert(self.entries[i].id, i);
+            }
         }
     }
 }
