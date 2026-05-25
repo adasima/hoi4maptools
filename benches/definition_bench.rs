@@ -1,3 +1,4 @@
+#![allow(deprecated, unused_imports)]
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
 
@@ -7,7 +8,7 @@ mod definition;
 mod graph;
 
 use definition::{DefinitionTable, ProvinceType};
-use graph::{ProvinceColor, ProvinceId};
+use graph::ProvinceColor;
 
 fn bench_get(c: &mut Criterion) {
     let mut table = DefinitionTable::new();

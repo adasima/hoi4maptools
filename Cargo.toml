@@ -46,6 +46,7 @@ strip = true
 
 [dev-dependencies]
 criterion = "0.8.2"
+tempfile = "3"
 
 [[bench]]
 name = "app_bench"

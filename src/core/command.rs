@@ -84,12 +84,14 @@ impl<Ctx> CommandStack<Ctx> {
     }
 
     /// 履歴をすべてクリアする。
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.undo_stack.clear();
         self.redo_stack.clear();
     }
 
     /// 外部で実行されたコマンドを履歴に追加する (ブラシ等で使用)。
+    #[allow(dead_code)]
     pub fn push_to_undo(&mut self, cmd: Box<dyn Command<Ctx>>) {
         self.undo_stack.push(cmd);
         self.redo_stack.clear();

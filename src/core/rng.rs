@@ -4,6 +4,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 /// アプリ全体で共有する決定論的RNG。
 pub struct WorldRng {
     inner: Xoshiro256PlusPlus,
+    #[allow(dead_code)]
     seed: u64,
 }
 
@@ -13,6 +14,7 @@ impl WorldRng {
         Self { inner, seed }
     }
 
+    #[allow(dead_code)]
     pub fn seed(&self) -> u64 {
         self.seed
     }
@@ -26,6 +28,7 @@ impl WorldRng {
         self.inner.next_u64()
     }
 
+    #[allow(dead_code)]
     pub fn next_f32(&mut self) -> f32 {
         // 0.0..1.0 の範囲の乱数
         let v = self.next_u64();

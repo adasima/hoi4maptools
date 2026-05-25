@@ -67,6 +67,7 @@ pub struct WorldSmithApp {
     /// 明示的に選択されたプロヴィンス群
     selected_provinces: std::collections::HashSet<ProvinceId>,
     /// ドラッグ選択の矩形
+    #[allow(dead_code)]
     selection_rect: Option<egui::Rect>,
     /// 現在描画・塗りつぶしに使う色
     current_brush_color: Option<ProvinceColor>,
@@ -333,6 +334,7 @@ impl WorldSmithApp {
     }
 
     /// プロヴィンス全体を別の色で塗りつぶす。
+    #[allow(dead_code)]
     fn fill_province_color(
         &mut self,
         from_color: ProvinceColor,

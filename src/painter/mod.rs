@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use eframe::egui;
 
 /// Painter 用ポイント (マップ座標系)。

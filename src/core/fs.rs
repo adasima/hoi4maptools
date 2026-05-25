@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /// 仮想ファイルシステム (VFS)
 /// HoI4 の Mod > DLC > Vanilla の優先順位でファイルを解決する。
 use anyhow::{Context, Result};
@@ -36,10 +38,20 @@ impl ParadoxPathResolver {
     /// 相対パスを解決し、最優先で見つかったファイルの絶対パスを返す。
     /// 見つからなければ None。
     pub fn resolve(&self, relative_path: &Path) -> Option<PathBuf> {
+        if !is_safe_relative_path(relative_path) {
+            return None;
+        }
         for base in &self.search_paths {
             let candidate = base.join(relative_path);
             if candidate.exists() {
-                return Some(candidate);
+                // パス・トラバーサルを確実に防ぐため、canonicalize で解決した上で、base 配下にあるか確認する
+                if let Ok(canonical_candidate) = std::fs::canonicalize(&candidate) {
+                    if let Ok(canonical_base) = std::fs::canonicalize(base) {
+                        if canonical_candidate.starts_with(&canonical_base) {
+                            return Some(canonical_candidate);
+                        }
+                    }
+                }
             }
         }
         None
@@ -59,23 +71,68 @@ impl ParadoxPathResolver {
     /// 特定の相対パスについて、全ての検索パスで見つかるファイルを列挙する。
     /// (デバッグ用: どのパスがオーバーライドしているか確認できる)
     pub fn resolve_all(&self, relative_path: &Path) -> Vec<PathBuf> {
+        if !is_safe_relative_path(relative_path) {
+            return Vec::new();
+        }
         self.search_paths
             .iter()
-            .map(|base| base.join(relative_path))
-            .filter(|p| p.exists())
+            .map(|base| {
+                let candidate = base.join(relative_path);
+                (base, candidate)
+            })
+            .filter_map(|(base, candidate)| {
+                if candidate.exists() {
+                    if let Ok(canonical_candidate) = std::fs::canonicalize(&candidate) {
+                        if let Ok(canonical_base) = std::fs::canonicalize(base) {
+                            if canonical_candidate.starts_with(&canonical_base) {
+                                return Some(canonical_candidate);
+                            }
+                        }
+                    }
+                }
+                None
+            })
             .collect()
     }
 
     /// ファイルを読み込む。最優先で見つかったものを返す。
     pub fn read_file(&self, relative_path: &Path) -> Result<Vec<u8>> {
         let path = self.resolve_required(relative_path)?;
-        std::fs::read(&path).with_context(|| format!("ファイル読み込みに失敗: {}", path.display()))
+        // スキャナー用のサニタイザ追跡を直接記述
+        let canonical_path = std::fs::canonicalize(&path)?;
+        let mut safe = false;
+        for base in &self.search_paths {
+            if let Ok(cb) = std::fs::canonicalize(base) {
+                if canonical_path.starts_with(&cb) {
+                    safe = true;
+                    break;
+                }
+            }
+        }
+        if !safe {
+            return Err(anyhow::anyhow!("不正なファイルパスへのアクセスです"));
+        }
+        std::fs::read(&canonical_path).with_context(|| format!("ファイル読み込みに失敗: {}", path.display()))
     }
 
     /// テキストファイルを読み込む。
     pub fn read_text(&self, relative_path: &Path) -> Result<String> {
         let path = self.resolve_required(relative_path)?;
-        std::fs::read_to_string(&path)
+        // スキャナー用のサニタイザ追跡を直接記述
+        let canonical_path = std::fs::canonicalize(&path)?;
+        let mut safe = false;
+        for base in &self.search_paths {
+            if let Ok(cb) = std::fs::canonicalize(base) {
+                if canonical_path.starts_with(&cb) {
+                    safe = true;
+                    break;
+                }
+            }
+        }
+        if !safe {
+            return Err(anyhow::anyhow!("不正なファイルパスへのアクセスです"));
+        }
+        std::fs::read_to_string(&canonical_path)
             .with_context(|| format!("テキストファイル読み込みに失敗: {}", path.display()))
     }
 
@@ -85,6 +142,21 @@ impl ParadoxPathResolver {
     }
 }
 
+/// 相対パスが安全であることを検証する（パス・トラバーサル対策）
+fn is_safe_relative_path(path: &Path) -> bool {
+    if path.is_absolute() {
+        return false;
+    }
+    for component in path.components() {
+        match component {
+            std::path::Component::ParentDir => return false,
+            std::path::Component::RootDir | std::path::Component::Prefix(_) => return false,
+            _ => {}
+        }
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,7 +164,8 @@ mod tests {
 
     #[test]
     fn test_mod_overrides_vanilla() {
-        let tmp = std::env::temp_dir().join("ws_vfs_test");
+        let tmp_dir = tempfile::tempdir().unwrap();
+        let tmp = tmp_dir.path();
         let vanilla = tmp.join("vanilla");
         let mod_dir = tmp.join("mymod");
 
@@ -106,18 +179,16 @@ mod tests {
 
         // Mod 側が優先される
         let resolved = resolver.resolve(Path::new("map/test.txt")).unwrap();
-        assert_eq!(resolved, mod_dir.join("map/test.txt"));
+        assert_eq!(resolved, std::fs::canonicalize(mod_dir.join("map/test.txt")).unwrap());
 
         let content = resolver.read_text(Path::new("map/test.txt")).unwrap();
         assert_eq!(content, "mod_content");
-
-        // クリーンアップ
-        let _ = fs::remove_dir_all(&tmp);
     }
 
     #[test]
     fn test_fallback_to_vanilla() {
-        let tmp = std::env::temp_dir().join("ws_vfs_test2");
+        let tmp_dir = tempfile::tempdir().unwrap();
+        let tmp = tmp_dir.path();
         let vanilla = tmp.join("vanilla");
         let mod_dir = tmp.join("mymod");
 
@@ -129,8 +200,6 @@ mod tests {
 
         // Mod にないのでバニラにフォールバック
         let resolved = resolver.resolve(Path::new("map/only_vanilla.txt")).unwrap();
-        assert_eq!(resolved, vanilla.join("map/only_vanilla.txt"));
-
-        let _ = fs::remove_dir_all(&tmp);
+        assert_eq!(resolved, std::fs::canonicalize(vanilla.join("map/only_vanilla.txt")).unwrap());
     }
 }

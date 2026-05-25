@@ -4842,6 +4842,7 @@ dependencies = [
  "rstar",
  "serde",
  "serde_json",
+ "tempfile",
  "unic-langid",
 ]
 

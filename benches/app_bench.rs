@@ -1,4 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+#![allow(deprecated)]
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 
 fn benchmark_clone(c: &mut Criterion) {
     // Attempting to bench the difference

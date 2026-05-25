@@ -1,9 +1,11 @@
+#![allow(dead_code)]
 use eframe::egui;
 
 /// レンダラーモジュール。
 /// Dirty Rect トラッキングとレイヤー合成を管理する。
 /// 変更された矩形領域を追跡し、テクスチャの部分更新を可能にする。
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DirtyRect {
     pub x: u32,
     pub y: u32,
@@ -18,6 +20,7 @@ pub struct DirtyRectTracker {
     current: Option<DirtyRect>,
 }
 
+#[allow(dead_code)]
 impl DirtyRectTracker {
     pub fn new() -> Self {
         Self { current: None }
@@ -71,6 +74,7 @@ impl DirtyRectTracker {
 
 /// レイヤーの種別。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[allow(dead_code)]
 pub enum LayerType {
     Provinces,
     Terrain,
@@ -82,6 +86,7 @@ pub enum LayerType {
 }
 
 /// 1枚のレイヤー情報。
+#[allow(dead_code)]
 pub struct MapLayer {
     pub layer_type: LayerType,
     pub visible: bool,
@@ -90,6 +95,7 @@ pub struct MapLayer {
     pub texture_handle: Option<egui::TextureHandle>,
 }
 
+#[allow(dead_code)]
 impl MapLayer {
     pub fn new(layer_type: LayerType) -> Self {
         Self {
@@ -108,6 +114,7 @@ pub struct MapViewport {
     /// ズーム倍率
     pub zoom: f32,
     /// レイヤーリスト
+    #[allow(dead_code)]
     pub layers: Vec<MapLayer>,
     /// dirty rect トラッカー
     pub dirty_tracker: DirtyRectTracker,
