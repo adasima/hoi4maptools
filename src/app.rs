@@ -1074,16 +1074,16 @@ impl WorldSmithApp {
             for q in min_q..=max_q {
                 for r in min_r..=max_r {
                     let poly = hex_cell_to_polygon((q, r), &self.hex_config);
-                    let mut points_screen = Vec::with_capacity(6);
+                    let mut points_screen = Vec::with_capacity(7);
                     for mp in poly.iter() {
                         points_screen.push(self.viewport.map_to_screen(*mp, available_rect));
                     }
-                    let mut lines = points_screen.clone();
-                    if let Some(first) = lines.first().copied() {
-                        lines.push(first);
+
+                    if let Some(first) = points_screen.first().copied() {
+                        points_screen.push(first);
                     }
                     painter.line(
-                        lines,
+                        points_screen,
                         egui::Stroke::new(
                             0.5,
                             egui::Color32::from_rgba_unmultiplied(200, 200, 255, 80),

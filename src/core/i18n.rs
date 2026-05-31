@@ -19,13 +19,17 @@ impl I18n {
         // 入力パスの文字列に親ディレクトリ参照が含まれていないか厳密にチェック
         let assets_dir_str = assets_dir.to_string_lossy();
         if assets_dir_str.contains("..") {
-            return Err(anyhow::anyhow!("無効なアセットディレクトリパス（親ディレクトリへの参照が含まれています）"));
+            return Err(anyhow::anyhow!(
+                "無効なアセットディレクトリパス（親ディレクトリへの参照が含まれています）"
+            ));
         }
 
         // 各パスコンポーネントを検証
         for component in assets_dir.components() {
             if let std::path::Component::ParentDir = component {
-                return Err(anyhow::anyhow!("無効なアセットディレクトリパス（パス・トラバーサルの疑い）"));
+                return Err(anyhow::anyhow!(
+                    "無効なアセットディレクトリパス（パス・トラバーサルの疑い）"
+                ));
             }
         }
 
@@ -39,7 +43,9 @@ impl I18n {
 
         for component in safe_assets_dir.components() {
             if let std::path::Component::ParentDir = component {
-                return Err(anyhow::anyhow!("無効なアセットディレクトリパス（パス・トラバーサルの疑い）"));
+                return Err(anyhow::anyhow!(
+                    "無効なアセットディレクトリパス（パス・トラバーサルの疑い）"
+                ));
             }
         }
 
@@ -69,9 +75,9 @@ impl I18n {
                         let mut bundle: fluent::concurrent::FluentBundle<FluentResource> =
                             fluent::concurrent::FluentBundle::new_concurrent(vec![langid]);
 
-                        bundle
-                            .add_resource(res)
-                            .map_err(|_e| anyhow::anyhow!("failed to add FTL resource for {file_stem}"))?;
+                        bundle.add_resource(res).map_err(|_e| {
+                            anyhow::anyhow!("failed to add FTL resource for {file_stem}")
+                        })?;
                         bundles.insert(file_stem.to_string(), bundle);
                     }
                 }

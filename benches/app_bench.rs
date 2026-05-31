@@ -1,30 +1,43 @@
-#![allow(deprecated)]
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
 
-fn benchmark_clone(c: &mut Criterion) {
-    // Attempting to bench the difference
-    c.bench_function("clone_arc_option", |b| {
-        use std::sync::Arc;
-        let opt = Some(Arc::new(42));
+fn benchmark_hex_points(c: &mut Criterion) {
+    let poly = vec![
+        (0.0, 0.0),
+        (1.0, 0.0),
+        (1.0, 1.0),
+        (0.0, 1.0),
+        (-1.0, 0.5),
+        (-0.5, -0.5),
+    ];
+
+    c.bench_function("with_clone", |b| {
         b.iter(|| {
-            let cloned = black_box(opt.clone());
-            if let Some(mut _val) = cloned {
-                black_box(_val);
+            let mut points_screen = Vec::with_capacity(6);
+            for mp in poly.iter() {
+                points_screen.push(*mp);
             }
+            let mut lines = points_screen.clone();
+            if let Some(first) = lines.first().copied() {
+                lines.push(first);
+            }
+            black_box(lines);
         });
     });
 
-    c.bench_function("borrow_arc_option", |b| {
-        use std::sync::Arc;
-        let mut opt = Some(Arc::new(42));
+    c.bench_function("without_clone", |b| {
         b.iter(|| {
-            if let Some(val) = black_box(&mut opt) {
-                black_box(val);
+            let mut points_screen = Vec::with_capacity(7);
+            for mp in poly.iter() {
+                points_screen.push(*mp);
             }
+            if let Some(first) = points_screen.first().copied() {
+                points_screen.push(first);
+            }
+            black_box(points_screen);
         });
     });
 }
 
-criterion_group!(benches, benchmark_clone);
+criterion_group!(benches, benchmark_hex_points);
 criterion_main!(benches);

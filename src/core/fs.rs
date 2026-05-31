@@ -112,7 +112,8 @@ impl ParadoxPathResolver {
         if !safe {
             return Err(anyhow::anyhow!("不正なファイルパスへのアクセスです"));
         }
-        std::fs::read(&canonical_path).with_context(|| format!("ファイル読み込みに失敗: {}", path.display()))
+        std::fs::read(&canonical_path)
+            .with_context(|| format!("ファイル読み込みに失敗: {}", path.display()))
     }
 
     /// テキストファイルを読み込む。
@@ -179,7 +180,10 @@ mod tests {
 
         // Mod 側が優先される
         let resolved = resolver.resolve(Path::new("map/test.txt")).unwrap();
-        assert_eq!(resolved, std::fs::canonicalize(mod_dir.join("map/test.txt")).unwrap());
+        assert_eq!(
+            resolved,
+            std::fs::canonicalize(mod_dir.join("map/test.txt")).unwrap()
+        );
 
         let content = resolver.read_text(Path::new("map/test.txt")).unwrap();
         assert_eq!(content, "mod_content");
@@ -200,6 +204,9 @@ mod tests {
 
         // Mod にないのでバニラにフォールバック
         let resolved = resolver.resolve(Path::new("map/only_vanilla.txt")).unwrap();
-        assert_eq!(resolved, std::fs::canonicalize(vanilla.join("map/only_vanilla.txt")).unwrap());
+        assert_eq!(
+            resolved,
+            std::fs::canonicalize(vanilla.join("map/only_vanilla.txt")).unwrap()
+        );
     }
 }
